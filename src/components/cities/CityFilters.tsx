@@ -1,0 +1,29 @@
+import React from 'react';
+import { Card, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
+
+interface CityFiltersProps {
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+}
+
+export const CityFilters: React.FC<CityFiltersProps> = ({ searchTerm, onSearchChange }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search cities..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+      </CardHeader>
+    </Card>
+  );
+};

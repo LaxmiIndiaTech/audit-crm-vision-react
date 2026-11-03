@@ -1,0 +1,485 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import useValidatedRoles from '@/hooks/useValidatedRoles';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import {
+  adminApi,
+  ApiError,
+  Branch,
+  BranchInspectionData,
+  InspectionChecklistItem,
+  InspectionDataItem,
+} from '@/lib/api';
+import {
+  Layers,
+  UserCheck,
+  Monitor,
+  FolderLock,
+  Home,
+  ShieldAlert,
+  Award,
+  Edit3,
+  ArrowLeft,
+  ExternalLink,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScorecardPointDetailsModal } from '@/components/scorecard/ScorecardPointDetailsModal';
+
+interface SectionMeta {
+  code: string;
+  title: string;
+  carry: number;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const SECTION_METAS: Record<string, SectionMeta> = {
+  B: {
+    code: 'B',
+    title: 'Operational Aspects and Application Awareness',
+    carry: 6,
+    description: 'Branch software usage (LOS, LMS, HRMS, CRM), product/credit policy display, non-refundable charge display, and employee ID card compliance.',
+    icon: Layers,
+  },
+  C: {
+    code: 'C',
+    title: 'Customer Management',
+    carry: 5,
+    description: 'Upfront charges disclosure to customers, customer grievance resolution process, and property papers/NOC acknowledgement copies sent to HO.',
+    icon: UserCheck,
+  },
+  D: {
+    code: 'D',
+    title: 'Display and Regulatory Requirements',
+    carry: 10,
+    description: 'Mandatory notice board displays (RBI license, grievance details, GSTIN, CIN, working hours, Fair Practice Code, POSH) and entrance signage.',
+    icon: Monitor,
+  },
+  E: {
+    code: 'E',
+    title: 'Document Management',
+    carry: 4,
+    description: 'Registers (Courier, Grievance, NOC), safe custody of original property papers (OPP), PDC compliance, and unauthorized stamp removal.',
+    icon: FolderLock,
+  },
+  F: {
+    code: 'F',
+    title: 'Admin & House Keeping',
+    carry: 6,
+    description: 'Lease/rent agreement copy, premises cleanliness, tobacco prohibition adherence, admin fixed assets verification, and scrap assets in AIMS.',
+    icon: Home,
+  },
+  G: {
+    code: 'G',
+    title: 'Information Security',
+    carry: 5,
+    description: 'Blocked USB ports, system checks for unauthorized files, active antivirus definitions, and IT hardware reconciliation with HO records.',
+    icon: ShieldAlert,
+  },
+};
+
+interface SectionAuditPageProps {
+  sectionCode: 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
+}
+
+const SectionAuditPage: React.FC<SectionAuditPageProps> = ({ sectionCode }) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { roles } = useValidatedRoles(true);
+  const isAdmin = !!roles?.includes('admin');
+  const isEmployee = !!roles?.includes('employee') && !isAdmin;
+  const userBranchId = user?.branchId;
+  const userBranchName = user?.branchName;
+
+  const meta = SECTION_METAS[sectionCode] || {
+    code: sectionCode,
+    title: `Section ${sectionCode}`,
+    carry: 0,
+    description: 'Section Checkpoints & Inspection scoring',
+    icon: Layers,
+  };
+  const IconComponent = meta.icon;
+
+  // Branch state
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+
+  // Inspection data state
+  const [inspectionData, setInspectionData] = useState<BranchInspectionData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Scoring Modal state
+  const [scoringModalOpen, setScoringModalOpen] = useState(false);
+  const [selectedCheckpoint, setSelectedCheckpoint] = useState<{
+    code: string;
+    section: string;
+    marks_carry?: number;
+    marks_obtained?: number;
+    visitorComment?: string;
+    immediateAction?: string;
+  } | null>(null);
+
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+  const currentYear = String(new Date().getFullYear());
+
+  // Load branches
+  const loadBranches = async () => {
+    try {
+      setBranchesLoading(true);
+      const response = await adminApi.getBranches({ per_page: 100 });
+      const branchList = Array.isArray(response.data) ? response.data : response.data?.branches || [];
+      setBranches(branchList);
+      
+      if (branchList.length > 0 && !selectedBranchId) {
+        const defaultId = isEmployee && userBranchId ? String(userBranchId) : String(branchList[0].id);
+        setSelectedBranchId(defaultId);
+      }
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Failed to load branches';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  // Load branch inspection data
+  const loadBranchInspection = async (branchId: string) => {
+    if (!branchId) return;
+    try {
+      setLoading(true);
+      const response = await adminApi.getBranchInspection(branchId);
+      setInspectionData(response.data);
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Failed to load inspection data';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+      setInspectionData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBranches();
+  }, [isEmployee]);
+
+  useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      const defaultId = isEmployee && userBranchId ? String(userBranchId) : String(branches[0].id);
+      setSelectedBranchId(defaultId);
+    }
+  }, [branches, isEmployee, userBranchId, selectedBranchId]);
+
+  useEffect(() => {
+    if (selectedBranchId) {
+      loadBranchInspection(selectedBranchId);
+    }
+  }, [selectedBranchId]);
+
+  // Find section item
+  const sectionItem: InspectionDataItem | undefined = inspectionData?.inspection_data.find(
+    (sec, idx) => sec.section_code === sectionCode || String.fromCharCode(65 + idx) === sectionCode || sec.section.startsWith(meta.title)
+  );
+
+  const checklistItems: InspectionChecklistItem[] = sectionItem?.checklist_items || [];
+  const carryMarks = sectionItem ? sectionItem.marks_carry : meta.carry;
+  const marksObtained = sectionItem ? sectionItem.marks_obtained : 0;
+  const percentage = carryMarks > 0 ? Math.round((marksObtained / carryMarks) * 100) : 0;
+
+  const handleOpenScoringModal = (item: InspectionChecklistItem) => {
+    setSelectedCheckpoint({
+      code: item.code,
+      section: item.description || item.section,
+      marks_carry: item.marks_carry,
+      marks_obtained: item.marks_obtained,
+      visitorComment: item.visitorComment,
+      immediateAction: item.immediateAction,
+    });
+    setScoringModalOpen(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Header & Actions */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              className="gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Dashboard</span>
+            </Button>
+            <span className="text-muted-foreground">•</span>
+            <Badge variant="outline" className="font-mono text-xs bg-primary/10 text-primary border-primary/20">
+              Section {sectionCode}
+            </Badge>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5 text-foreground">
+            <IconComponent className="h-7 w-7 text-primary" />
+            <span>{meta.title}</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
+            {meta.description}
+          </p>
+        </div>
+
+        {/* Branch Selector & Scorecard Shortcut */}
+        <div className="flex items-center gap-3">
+          {!isEmployee ? (
+            <div className="w-full md:w-64">
+              <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                <SelectTrigger aria-label="Select Branch" className="font-medium">
+                  <SelectValue placeholder="Select Branch" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto">
+                  {branchesLoading ? (
+                    <SelectItem value="loading" disabled>Loading branches...</SelectItem>
+                  ) : branches.map(b => (
+                    <SelectItem key={b.id} value={String(b.id)}>
+                      {b.branch_name} ({b.branch_code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              Branch: <span className="font-semibold text-foreground">{userBranchName || '-'}</span>
+            </div>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 hidden sm:inline-flex"
+            onClick={() => navigate('/scorecard')}
+          >
+            <span>Full Scorecard</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Score Card */}
+      <Card className="crm-card border shadow-sm">
+        <CardContent className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+            <div className="space-y-1">
+              <span className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                Section Carry Marks
+              </span>
+              <div className="text-2xl font-bold text-foreground">
+                {carryMarks.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">Marks</span>
+              </div>
+            </div>
+
+            <div className="space-y-1 border-t md:border-t-0 md:border-l border-border/60 pt-3 md:pt-0 md:pl-4">
+              <span className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                Marks Obtained by Branch
+              </span>
+              <div className="text-2xl font-bold text-primary">
+                {marksObtained.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">/ {carryMarks.toFixed(1)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1 border-t md:border-t-0 md:border-l border-border/60 pt-3 md:pt-0 md:pl-4">
+              <span className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                Section Performance
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-foreground">{percentage}%</span>
+                <Badge
+                  variant="outline"
+                  className={`text-xs font-semibold ${
+                    percentage >= 75
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-300'
+                      : percentage > 0
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-300'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {percentage >= 75 ? 'Pass / High' : percentage > 0 ? 'Partial' : 'Pending'}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="space-y-1 border-t md:border-t-0 md:border-l border-border/60 pt-3 md:pt-0 md:pl-4">
+              <span className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                Branch Inspection Period
+              </span>
+              <div className="text-sm font-medium text-foreground truncate">
+                {inspectionData?.branch_info.inspection_date || 'October 2026'}
+              </div>
+              <div className="text-xs text-muted-foreground truncate">
+                {inspectionData?.branch_info.branch_name} • {inspectionData?.branch_info.company_name}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Checkpoints Scoring Table */}
+      <Card className="crm-card border shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-bold">Audit Checkpoints & Scoring</CardTitle>
+              <CardDescription>
+                HO auditor observation likhein aur branch ko number assign karein.
+              </CardDescription>
+            </div>
+            <Badge variant="secondary" className="font-medium text-xs">
+              {checklistItems.length} Checkpoints Configured
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="w-16 text-center">Code</TableHead>
+                  <TableHead className="min-w-[320px]">Checkpoint Requirement / Scope Point</TableHead>
+                  <TableHead className="text-right w-24">Carry</TableHead>
+                  <TableHead className="text-right w-28">Obtained</TableHead>
+                  <TableHead className="text-right w-24">% Score</TableHead>
+                  <TableHead className="text-right w-44">HO Scoring Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <span>Loading Section {sectionCode} checkpoints...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : checklistItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No checkpoints found for Section {sectionCode}. Please select a branch or verify seeders.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  checklistItems.map((item) => {
+                    const itemPct = item.marks_carry > 0 ? Math.round((item.marks_obtained / item.marks_carry) * 100) : 0;
+                    const hasMarks = item.marks_obtained > 0;
+
+                    return (
+                      <TableRow key={item.code} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="font-mono text-xs font-semibold bg-background">
+                            {item.code}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-medium leading-relaxed text-foreground">
+                              {item.description || item.section}
+                            </p>
+                            {item.visitorComment && (
+                              <div className="text-xs text-muted-foreground flex items-start gap-1 p-2 bg-muted/40 rounded border border-border/40">
+                                <span className="font-semibold text-primary shrink-0">HO Auditor Remark:</span>
+                                <span>{item.visitorComment}</span>
+                              </div>
+                            )}
+                            {item.immediateAction && (
+                              <div className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-300/40">
+                                <span className="font-semibold shrink-0">Immediate Action:</span>
+                                <span>{item.immediateAction}</span>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-semibold text-muted-foreground">
+                          {item.marks_carry.toFixed(1)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span
+                            className={`inline-block font-semibold px-2.5 py-1 rounded text-xs ${
+                              hasMarks
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {item.marks_obtained.toFixed(1)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-xs font-medium text-muted-foreground">{itemPct}%</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant={hasMarks ? 'outline' : 'default'}
+                            className={`h-8 gap-1.5 text-xs font-medium ${
+                              !hasMarks ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''
+                            }`}
+                            onClick={() => handleOpenScoringModal(item)}
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            <span>{hasMarks ? 'Change Marks' : 'Number Dein (Score)'}</span>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+
+                {/* Subtotal Row */}
+                <TableRow className="font-bold bg-muted/60 text-foreground border-t-2">
+                  <TableCell colSpan={2} className="py-3">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-4 w-4 text-primary" />
+                      <span>Total Marks for Section {sectionCode}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right text-base">{carryMarks.toFixed(1)}</TableCell>
+                  <TableCell className="text-right text-base text-primary">{marksObtained.toFixed(1)}</TableCell>
+                  <TableCell className="text-right text-base">{percentage}%</TableCell>
+                  <TableCell className="text-right">
+                    <Badge variant="outline" className="text-xs font-semibold">
+                      {percentage >= 75 ? 'Satisfactory' : 'Action Needed'}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal for HO Auditor to Assign Marks, Comment, and Action */}
+      <ScorecardPointDetailsModal
+        open={scoringModalOpen}
+        onOpenChange={setScoringModalOpen}
+        scorePoint={selectedCheckpoint}
+        selectedMonth={currentMonth}
+        selectedYear={currentYear}
+        branchId={selectedBranchId}
+        branchName={branches.find((b) => String(b.id) === selectedBranchId)?.branch_name}
+        onSave={() => {
+          if (selectedBranchId) {
+            loadBranchInspection(selectedBranchId);
+          }
+        }}
+      />
+    </div>
+  );
+};
+
+export default SectionAuditPage;
