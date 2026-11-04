@@ -615,38 +615,368 @@ export const ScorecardPointDetailsModal: React.FC<ScorecardPointDetailsModalProp
                     </p>
                   )}
 
-                  {/* Quick Preset Buttons */}
-                  <div className="flex items-center gap-1.5 pt-1">
-                    <span className="text-xs text-muted-foreground mr-1">Quick Select:</span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs px-2.5"
-                      onClick={() => setMarksObtained('0')}
-                    >
-                      0 Marks (Fail)
-                    </Button>
-                    {carry > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs px-2.5"
-                        onClick={() => setMarksObtained(String((carry * 0.5).toFixed(1)))}
-                      >
-                        {(carry * 0.5).toFixed(1)} (Half)
-                      </Button>
+                  {/* Quick Preset Buttons / Policy Tier Calculation */}
+                  <div className="pt-1">
+                    <p className="text-xs text-muted-foreground font-semibold mb-1.5">Quick Select / Policy Tiers:</p>
+                    
+                    {/* Tier presets for Section H (TAT Login to Disb, 5 Marks) */}
+                    {(scorePoint.code === 'H' || scorePoint.code === 'H.1') && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 hover:bg-emerald-500/20"
+                          onClick={() => {
+                            setMarksObtained('5.00');
+                            if (!visitorComment) setVisitorComment('Average <= 10 days from login to disbursement in last quarter.');
+                          }}
+                        >
+                          &le;10 Days (5.00 M | 100%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('3.75');
+                            if (!visitorComment) setVisitorComment('Average 11-20 days from login to disbursement.');
+                          }}
+                        >
+                          11-20 Days (3.75 M | 75%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('2.50');
+                            if (!visitorComment) setVisitorComment('Average 21-30 days from login to disbursement.');
+                          }}
+                        >
+                          21-30 Days (2.50 M | 50%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('1.00');
+                            if (!visitorComment) setVisitorComment('Average 31+ days from login to disbursement.');
+                          }}
+                        >
+                          31+ Days (1.00 M | 20%)
+                        </Button>
+                      </div>
                     )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs px-2.5 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
-                      onClick={() => setMarksObtained(String(carry))}
-                    >
-                      {carry} Marks (Full Pass)
-                    </Button>
+
+                    {/* Tier presets for Section I (Target vs Achievement, 15 Marks) */}
+                    {(scorePoint.code === 'I' || scorePoint.code === 'I.1') && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 hover:bg-emerald-500/20"
+                          onClick={() => {
+                            setMarksObtained('15.00');
+                            if (!visitorComment) setVisitorComment('Achievement > 90% in last quarter.');
+                          }}
+                        >
+                          &gt;90% (15.00 M | 100%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('11.25');
+                            if (!visitorComment) setVisitorComment('Achievement 60% to 90% in last quarter.');
+                          }}
+                        >
+                          60-90% (11.25 M | 75%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('7.50');
+                            if (!visitorComment) setVisitorComment('Achievement 40% to 60% in last quarter.');
+                          }}
+                        >
+                          40-60% (7.50 M | 50%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('3.00');
+                            if (!visitorComment) setVisitorComment('Achievement Below 40% in last quarter.');
+                          }}
+                        >
+                          &lt;40% (3.00 M | 20%)
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Tier presets for Section J (Branch NPA %, 15 Marks) */}
+                    {(scorePoint.code === 'J' || scorePoint.code === 'J.1') && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 hover:bg-emerald-500/20"
+                          onClick={() => {
+                            setMarksObtained('15.00');
+                            if (!visitorComment) setVisitorComment('Branch NPA is <= 2% (Low Risk).');
+                          }}
+                        >
+                          &le;2% Low (15.00 M | 100%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('7.50');
+                            if (!visitorComment) setVisitorComment('Branch NPA is 2% to 5% (Medium Risk).');
+                          }}
+                        >
+                          2-5% Med (7.50 M | 50%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('3.00');
+                            if (!visitorComment) setVisitorComment('Branch NPA is 5% to 8% (High Risk).');
+                          }}
+                        >
+                          5-8% High (3.00 M | 20%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted text-red-600"
+                          onClick={() => {
+                            setMarksObtained('0.00');
+                            if (!visitorComment) setVisitorComment('Branch NPA is > 8% (Very High Risk).');
+                          }}
+                        >
+                          &gt;8% V.High (0.00 M | 0%)
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Tier presets for Section K (Manpower Attrition, 10 Marks) */}
+                    {(scorePoint.code === 'K' || scorePoint.code === 'K.1') && (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 hover:bg-emerald-500/20"
+                          onClick={() => {
+                            setMarksObtained('10.00');
+                            if (!visitorComment) setVisitorComment('Manpower attrition is < 5% in last quarter.');
+                          }}
+                        >
+                          &lt;5% (10.00 M | 100%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('5.00');
+                            if (!visitorComment) setVisitorComment('Manpower attrition is 5% to 10% in last quarter.');
+                          }}
+                        >
+                          5-10% (5.00 M | 50%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted text-red-600"
+                          onClick={() => {
+                            setMarksObtained('0.00');
+                            if (!visitorComment) setVisitorComment('Manpower attrition is >= 10% in last quarter.');
+                          }}
+                        >
+                          &ge;10% (0.00 M | 0%)
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Tier presets for Section L (Application Utilization, 5 Marks) */}
+                    {(scorePoint.code === 'L' || scorePoint.code === 'L.1') && (
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 hover:bg-emerald-500/20"
+                          onClick={() => {
+                            setMarksObtained('5.00');
+                            if (!visitorComment) setVisitorComment('Application utilization > 80% (AIMS & Visitor App).');
+                          }}
+                        >
+                          &gt;80% (5.00 M)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('3.75');
+                            if (!visitorComment) setVisitorComment('Application utilization 60% to 80%.');
+                          }}
+                        >
+                          60-80% (3.75 M)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('2.50');
+                            if (!visitorComment) setVisitorComment('Application utilization 40% to 60%.');
+                          }}
+                        >
+                          40-60% (2.50 M)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('1.25');
+                            if (!visitorComment) setVisitorComment('Application utilization 20% to 40%.');
+                          }}
+                        >
+                          20-40% (1.25 M)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted text-red-600"
+                          onClick={() => {
+                            setMarksObtained('0.00');
+                            if (!visitorComment) setVisitorComment('Application utilization <= 20%.');
+                          }}
+                        >
+                          &le;20% (0.00 M)
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Tier presets for Section M (Loan File Query Resolution, 10 Marks) */}
+                    {(scorePoint.code === 'M' || scorePoint.code === 'M.1') && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 hover:bg-emerald-500/20"
+                          onClick={() => {
+                            setMarksObtained('10.00');
+                            if (!visitorComment) setVisitorComment('Loan file query resolution > 80% in last quarter.');
+                          }}
+                        >
+                          &gt;80% (10.00 M | 100%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('7.50');
+                            if (!visitorComment) setVisitorComment('Loan file query resolution 60% to 80%.');
+                          }}
+                        >
+                          60-80% (7.50 M | 75%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('5.00');
+                            if (!visitorComment) setVisitorComment('Loan file query resolution 40% to 60%.');
+                          }}
+                        >
+                          40-60% (5.00 M | 50%)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setMarksObtained('2.00');
+                            if (!visitorComment) setVisitorComment('Loan file query resolution <= 40%.');
+                          }}
+                        >
+                          &le;40% (2.00 M | 20%)
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Standard Presets for Sections A to G */}
+                    {!['H', 'H.1', 'I', 'I.1', 'J', 'J.1', 'K', 'K.1', 'L', 'L.1', 'M', 'M.1'].includes(scorePoint.code) && (
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs px-2.5"
+                          onClick={() => setMarksObtained('0')}
+                        >
+                          0 Marks (Fail)
+                        </Button>
+                        {carry > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs px-2.5"
+                            onClick={() => setMarksObtained(String((carry * 0.5).toFixed(1)))}
+                          >
+                            {(carry * 0.5).toFixed(1)} (Half)
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs px-2.5 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
+                          onClick={() => setMarksObtained(String(carry))}
+                        >
+                          {carry} Marks (Full Pass)
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

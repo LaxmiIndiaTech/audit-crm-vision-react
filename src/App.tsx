@@ -152,6 +152,55 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              {/* Audit Performance Sections H through M */}
+              <Route
+                path="performance-tat"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'employee', 'super_admin']}>
+                    <SectionAuditPage sectionCode="H" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="performance-target"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'employee', 'super_admin']}>
+                    <SectionAuditPage sectionCode="I" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="performance-npa"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'employee', 'super_admin']}>
+                    <SectionAuditPage sectionCode="J" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="performance-attrition"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'employee', 'super_admin']}>
+                    <SectionAuditPage sectionCode="K" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="performance-utilization"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'employee', 'super_admin']}>
+                    <SectionAuditPage sectionCode="L" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="performance-queries"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'employee', 'super_admin']}>
+                    <SectionAuditPage sectionCode="M" />
+                  </ProtectedRoute>
+                }
+              />
               <Route 
                 path="states" 
                 element={

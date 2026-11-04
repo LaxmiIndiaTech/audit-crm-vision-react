@@ -25,6 +25,12 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertTriangle,
+  Clock,
+  Target,
+  Percent,
+  UserMinus,
+  Smartphone,
+  FileQuestion,
 } from 'lucide-react';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -83,10 +89,52 @@ const SECTION_METAS: Record<string, SectionMeta> = {
     description: 'Blocked USB ports, system checks for unauthorized files, active antivirus definitions, and IT hardware reconciliation with HO records.',
     icon: ShieldAlert,
   },
+  H: {
+    code: 'H',
+    title: 'TAT Login to Disbursement (Average Of Last Quarter)',
+    carry: 5,
+    description: 'Average days from loan application login to final disbursement. Tiers: <=10 days (100%), 11-20 days (75%), 21-30 days (50%), 31+ days (20%).',
+    icon: Clock,
+  },
+  I: {
+    code: 'I',
+    title: 'Target Vs Achievement (Average Of Last Quarter)',
+    carry: 15,
+    description: 'Quarterly business achievement versus branch sales targets. Tiers: >90% (100%), 60-90% (75%), 40-60% (50%), <40% (20%).',
+    icon: Target,
+  },
+  J: {
+    code: 'J',
+    title: 'Branch NPA % (Average Of Last Quarter)',
+    carry: 15,
+    description: 'Branch non-performing assets ratio and credit quality risk. Tiers: <=2% Low (100%), 2-5% Medium (50%), 5-8% High (20%), >8% Very High (0%).',
+    icon: Percent,
+  },
+  K: {
+    code: 'K',
+    title: 'Manpower Attrition (Average Of Last Quarter)',
+    carry: 10,
+    description: 'Staff turnover rate during the audit quarter. Tiers: <5% (100%), 5-10% (50%), >=10% (0%).',
+    icon: UserMinus,
+  },
+  L: {
+    code: 'L',
+    title: 'Application Utilization (AIMS & Visitor App)',
+    carry: 5,
+    description: 'Adoption and daily usage rates for internal apps (AIMS & Visitor App). Tiers: >80% (100%), 60-80% (75%), 40-60% (50%), 20-40% (25%), <=20% (0%).',
+    icon: Smartphone,
+  },
+  M: {
+    code: 'M',
+    title: 'Loan File Query Resolution (Average Of Last Quarter)',
+    carry: 10,
+    description: 'Percentage of credit and underwriting queries resolved within TAT. Tiers: >80% (100%), 60-80% (75%), 40-60% (50%), <=40% (20%).',
+    icon: FileQuestion,
+  },
 };
 
 interface SectionAuditPageProps {
-  sectionCode: 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
+  sectionCode: 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M';
 }
 
 const SectionAuditPage: React.FC<SectionAuditPageProps> = ({ sectionCode }) => {

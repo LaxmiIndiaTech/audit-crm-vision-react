@@ -22,6 +22,12 @@ import {
   Home,
   ShieldAlert,
   Calendar,
+  Clock,
+  Target,
+  Percent,
+  UserMinus,
+  Smartphone,
+  FileQuestion,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -100,6 +106,44 @@ const Sidebar = ({
       title: "G. Information Security",
       href: "/information-security",
       icon: ShieldAlert,
+      roles: ["admin", "employee", "super_admin"],
+    },
+    // Audit Performance Sections H through M
+    {
+      title: "H. TAT Login to Disb.",
+      href: "/performance-tat",
+      icon: Clock,
+      roles: ["admin", "employee", "super_admin"],
+      group: "Branch Performance (H-M)",
+    },
+    {
+      title: "I. Target vs Achievement",
+      href: "/performance-target",
+      icon: Target,
+      roles: ["admin", "employee", "super_admin"],
+    },
+    {
+      title: "J. Branch NPA %",
+      href: "/performance-npa",
+      icon: Percent,
+      roles: ["admin", "employee", "super_admin"],
+    },
+    {
+      title: "K. Manpower Attrition",
+      href: "/performance-attrition",
+      icon: UserMinus,
+      roles: ["admin", "employee", "super_admin"],
+    },
+    {
+      title: "L. App Utilization",
+      href: "/performance-utilization",
+      icon: Smartphone,
+      roles: ["admin", "employee", "super_admin"],
+    },
+    {
+      title: "M. Query Resolution",
+      href: "/performance-queries",
+      icon: FileQuestion,
       roles: ["admin", "employee", "super_admin"],
     },
     // Review & Reports
