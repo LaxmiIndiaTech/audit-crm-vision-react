@@ -3,10 +3,11 @@
 
 export interface ScoringRule {
   id: number | string; // backend numeric id; temporary client rows can use a temp string id
+  rule_type?: 'cash_cheque' | 'tat_disbursement';
   min_days: number; // inclusive
   max_days: number; // inclusive
   description?: string | null;
-  score: number; // 0..10
+  score: number; // 0..10 for cash, 0..100% for tat
   is_active: boolean;
   is_deleted?: boolean; // rarely sent to client, but keep for completeness
   meta?: Record<string, any> | null;
@@ -16,15 +17,17 @@ export interface ScoringRule {
 
 // Payload for create/update (single rule)
 export interface ScoringRulePayload {
+  rule_type?: 'cash_cheque' | 'tat_disbursement';
   min_days: number;
   max_days: number;
   description?: string;
-  score: number; // 0..10
+  score: number;
   is_active?: boolean;
 }
 
 // Bulk sync request body
 export interface ScoringRulesSyncPayload {
+  rule_type?: 'cash_cheque' | 'tat_disbursement';
   rules: Array<Partial<Pick<ScoringRule, 'id'>> & ScoringRulePayload>;
   replace?: boolean; // when true, rules not in payload are soft-deleted (inactive)
 }
@@ -79,6 +82,7 @@ export type AnyScoringResponse =
 export interface EditableScoringRule {
   temp_id?: string; // for unsaved rows
   id?: number; // present if persisted
+  ruleType?: 'cash_cheque' | 'tat_disbursement';
   minDays: number;
   maxDays: number;
   description: string;
@@ -90,6 +94,7 @@ export interface EditableScoringRule {
 
 export const toEditableRule = (rule: ScoringRule): EditableScoringRule => ({
   id: typeof rule.id === 'number' ? rule.id : Number(rule.id),
+  ruleType: rule.rule_type,
   minDays: rule.min_days,
   maxDays: rule.max_days,
   description: rule.description || '',
@@ -99,6 +104,7 @@ export const toEditableRule = (rule: ScoringRule): EditableScoringRule => ({
 
 export const toPayload = (rule: EditableScoringRule): ScoringRulePayload & { id?: number } => ({
   ...(rule.id ? { id: rule.id } : {}),
+  rule_type: rule.ruleType,
   min_days: rule.minDays,
   max_days: rule.maxDays,
   description: rule.description || undefined,

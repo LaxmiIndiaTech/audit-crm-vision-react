@@ -13,6 +13,7 @@ interface UseScoringRulesOptions {
   page?: number;
   perPage?: number;
   autoLoad?: boolean;
+  ruleType?: 'cash_cheque' | 'tat_disbursement';
 }
 
 interface UseScoringRulesReturn {
@@ -46,11 +47,12 @@ const detectOverlaps = (rules: EditableScoringRule[]): string[] => {
   return errors;
 };
 
-const validateRule = (r: EditableScoringRule): string | null => {
+const validateRule = (r: EditableScoringRule, ruleType: string = 'cash_cheque'): string | null => {
   if (r.minDays < 0) return 'minDays must be >= 0';
   if (r.maxDays < 0) return 'maxDays must be >= 0';
   if (r.minDays > r.maxDays) return 'minDays cannot exceed maxDays';
-  if (r.score < 0 || r.score > 10) return 'score must be 0..10';
+  const maxScore = ruleType === 'tat_disbursement' ? 100 : 10;
+  if (r.score < 0 || r.score > maxScore) return `score must be 0..${maxScore}`;
   return null;
 };
 
@@ -65,7 +67,7 @@ const validateRule = (r: EditableScoringRule): string | null => {
  * Client side does pre-validation to give faster feedback; backend remains source of truth.
  */
 export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScoringRulesReturn => {
-  const { page = 1, perPage = 100, autoLoad = true } = options;
+  const { page = 1, perPage = 100, autoLoad = true, ruleType = 'cash_cheque' } = options;
   const { toast } = useToast();
   const [rules, setRules] = useState<EditableScoringRule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,17 +79,18 @@ export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScorin
     setLoading(true);
     setError(null);
     try {
-      const res = await adminApi.getScoringRules({ page, per_page: perPage });
+      const res = await adminApi.getScoringRules({ page, per_page: perPage, rule_type: ruleType } as any);
       if (res.status === 'success') {
         const list: ScoringRule[] = res.data.scoring_rules || res.data.scoringRules || [];
         setRules(list.map(toEditableRule));
+        setDirty(false);
       }
     } catch (e: any) {
       setError(e.message || 'Failed to load rules');
     } finally {
       setLoading(false);
     }
-  }, [page, perPage]);
+  }, [page, perPage, ruleType]);
 
   useEffect(() => {
     if (autoLoad) load();
@@ -96,16 +99,17 @@ export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScorin
   const addRule = useCallback(() => {
     const temp: EditableScoringRule = {
       temp_id: Math.random().toString(36).slice(2),
+      ruleType,
       minDays: 0,
       maxDays: 0,
       description: '',
-      score: 0,
+      score: ruleType === 'tat_disbursement' ? 100 : 10,
       is_active: true,
       _dirty: true,
     };
     setRules(prev => [...prev, temp]);
     setDirty(true);
-  }, []);
+  }, [ruleType]);
 
   const updateRule = useCallback((idOrTemp: number | string, patch: Partial<EditableScoringRule>) => {
     setRules(prev => prev.map(r => (r.id === idOrTemp || r.temp_id === idOrTemp) ? { ...r, ...patch, _dirty: true } : r));
@@ -120,7 +124,7 @@ export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScorin
   const validateAll = useCallback(() => {
     const perRuleErrors: string[] = [];
     const validated = rules.map(r => {
-      const err = validateRule(r);
+      const err = validateRule(r, ruleType);
       if (err) perRuleErrors.push(`${r.minDays}-${r.maxDays || '?'}: ${err}`);
       return { ...r, _error: err || undefined };
     });
@@ -128,7 +132,7 @@ export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScorin
     const allErrors = [...perRuleErrors, ...overlapErrors];
     setRules(validated);
     return { valid: allErrors.length === 0, errors: allErrors };
-  }, [rules]);
+  }, [rules, ruleType]);
 
   const saveAll = useCallback(async (opts: { replace?: boolean } = {}) => {
     const { valid, errors } = validateAll();
@@ -139,6 +143,7 @@ export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScorin
     setSaving(true);
     try {
       const payload: ScoringRulesSyncPayload = {
+        rule_type: ruleType,
         rules: rules.map(toPayload),
         replace: opts.replace ?? true,
       };
@@ -147,7 +152,7 @@ export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScorin
         const list: ScoringRule[] = res.data.scoring_rules || [];
         setRules(list.map(toEditableRule));
         setDirty(false);
-        toast({ title: 'Scoring rules saved', description: 'All rules synced successfully.' });
+        toast({ title: 'Scoring rules saved', description: `All ${ruleType === 'tat_disbursement' ? 'TAT' : 'Cash'} rules synced successfully.` });
         return true;
       }
       toast({ title: 'Save failed', description: 'Unexpected response', variant: 'destructive' });
@@ -158,7 +163,7 @@ export const useScoringRules = (options: UseScoringRulesOptions = {}): UseScorin
     } finally {
       setSaving(false);
     }
-  }, [rules, toast, validateAll]);
+  }, [rules, ruleType, toast, validateAll]);
 
   const reload = useCallback(async () => {
     await load();
