@@ -1438,7 +1438,7 @@ export const adminApi = {
   /**
    * Get scoring rules (paginated)
    */
-  getScoringRules: async (params?: { page?: number; per_page?: number }): Promise<any> => {
+  getScoringRules: async (params?: { page?: number; per_page?: number; rule_type?: string }): Promise<any> => {
     const token = secureStorage.getItem('crm_token') as string | null;
     if (!token) {
       throw new ApiError('Not authenticated', 401, 'NO_TOKEN');
@@ -1448,6 +1448,7 @@ export const adminApi = {
       const search = new URLSearchParams();
       if (typeof params.page === 'number') search.set('page', String(params.page));
       if (typeof params.per_page === 'number') search.set('per_page', String(params.per_page));
+      if (params.rule_type) search.set('rule_type', params.rule_type);
       const qs = search.toString();
       if (qs) endpoint = `${endpoint}?${qs}`;
     }
