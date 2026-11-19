@@ -41,6 +41,9 @@ export const API_ENDPOINTS = {
     HOLIDAY: (id: string | number) => `/${API_CONFIG.VERSION}/admin/holidays/${id}`,
     HOLIDAYS_IMPORT: `/${API_CONFIG.VERSION}/admin/holidays/import`,
     HOLIDAYS_RECALCULATE: `/${API_CONFIG.VERSION}/admin/holidays/recalculate`,
+    TAT_RECORDS: `/${API_CONFIG.VERSION}/admin/tat_records`,
+    TAT_RECORDS_IMPORT: `/${API_CONFIG.VERSION}/admin/tat_records/import`,
+    TAT_BRANCH_SUMMARY: (branchId: string | number) => `/${API_CONFIG.VERSION}/admin/tat_records/branch_summary/${branchId}`,
   },
 } as const;
 
@@ -1769,6 +1772,40 @@ export const adminApi = {
     return makeApiRequest(API_ENDPOINTS.ADMIN.HOLIDAYS_RECALCULATE, {
       method: 'POST',
       headers: createHeaders({ Authorization: token }),
+    });
+  },
+  importTatRecords: async (file: File, branchId?: number | string): Promise<any> => {
+    const token = secureStorage.getItem('crm_token') as string | null;
+    const form = new FormData();
+    form.append('file', file);
+    if (branchId) form.append('branch_id', String(branchId));
+    const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.ADMIN.TAT_RECORDS_IMPORT}`;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = token;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: new Headers(headers),
+      body: form,
+    });
+    return response.json();
+  },
+  getTatRecords: async (params?: { q?: string; branch_id?: number | string; product_name?: string; page?: number; per_page?: number }): Promise<any> => {
+    const search = new URLSearchParams();
+    if (params?.q) search.set('q', params.q);
+    if (params?.branch_id) search.set('branch_id', String(params.branch_id));
+    if (params?.product_name) search.set('product_name', params.product_name);
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.per_page) search.set('per_page', String(params.per_page));
+    const qs = search.toString();
+    const endpoint = `${API_ENDPOINTS.ADMIN.TAT_RECORDS}${qs ? `?${qs}` : ''}`;
+    return makeApiRequest(endpoint, {
+      method: 'GET',
+    });
+  },
+  getBranchTatSummary: async (branchId: number | string): Promise<any> => {
+    const endpoint = API_ENDPOINTS.ADMIN.TAT_BRANCH_SUMMARY(branchId);
+    return makeApiRequest(endpoint, {
+      method: 'GET',
     });
   },
 };
