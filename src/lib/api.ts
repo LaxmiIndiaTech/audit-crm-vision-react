@@ -44,6 +44,10 @@ export const API_ENDPOINTS = {
     TAT_RECORDS: `/${API_CONFIG.VERSION}/admin/tat_records`,
     TAT_RECORDS_IMPORT: `/${API_CONFIG.VERSION}/admin/tat_records/import`,
     TAT_BRANCH_SUMMARY: (branchId: string | number) => `/${API_CONFIG.VERSION}/admin/tat_records/branch_summary/${branchId}`,
+    TARGET_RECORDS: `/${API_CONFIG.VERSION}/admin/target_records`,
+    TARGET_RECORDS_IMPORT: `/${API_CONFIG.VERSION}/admin/target_records/import`,
+    TARGET_BRANCH_SUMMARY: (branchId: string | number) => `/${API_CONFIG.VERSION}/admin/target_records/branch_summary/${branchId}`,
+    TARGET_LOANS: `/${API_CONFIG.VERSION}/admin/target_records/loans`,
   },
 } as const;
 
@@ -1805,6 +1809,52 @@ export const adminApi = {
   },
   getBranchTatSummary: async (branchId: number | string): Promise<any> => {
     const endpoint = API_ENDPOINTS.ADMIN.TAT_BRANCH_SUMMARY(branchId);
+    return makeApiRequest(endpoint, {
+      method: 'GET',
+    });
+  },
+  importTargetRecords: async (file: File, branchId?: number | string, sheetType?: string): Promise<any> => {
+    const token = secureStorage.getItem('crm_token') as string | null;
+    const form = new FormData();
+    form.append('file', file);
+    if (branchId) form.append('branch_id', String(branchId));
+    if (sheetType) form.append('sheet_type', sheetType);
+    const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.ADMIN.TARGET_RECORDS_IMPORT}`;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = token;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: new Headers(headers),
+      body: form,
+    });
+    return response.json();
+  },
+  getTargetRecords: async (params?: { q?: string; branch_id?: number | string; page?: number; per_page?: number }): Promise<any> => {
+    const search = new URLSearchParams();
+    if (params?.q) search.set('q', params.q);
+    if (params?.branch_id) search.set('branch_id', String(params.branch_id));
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.per_page) search.set('per_page', String(params.per_page));
+    const qs = search.toString();
+    const endpoint = `${API_ENDPOINTS.ADMIN.TARGET_RECORDS}${qs ? `?${qs}` : ''}`;
+    return makeApiRequest(endpoint, {
+      method: 'GET',
+    });
+  },
+  getTargetLoans: async (params?: { q?: string; branch_id?: number | string; page?: number; per_page?: number }): Promise<any> => {
+    const search = new URLSearchParams();
+    if (params?.q) search.set('q', params.q);
+    if (params?.branch_id) search.set('branch_id', String(params.branch_id));
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.per_page) search.set('per_page', String(params.per_page));
+    const qs = search.toString();
+    const endpoint = `${API_ENDPOINTS.ADMIN.TARGET_LOANS}${qs ? `?${qs}` : ''}`;
+    return makeApiRequest(endpoint, {
+      method: 'GET',
+    });
+  },
+  getBranchTargetSummary: async (branchId: number | string): Promise<any> => {
+    const endpoint = API_ENDPOINTS.ADMIN.TARGET_BRANCH_SUMMARY(branchId);
     return makeApiRequest(endpoint, {
       method: 'GET',
     });

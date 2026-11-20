@@ -179,6 +179,15 @@ const SectionAuditPage: React.FC<SectionAuditPageProps> = ({ sectionCode }) => {
   const [tatLoading, setTatLoading] = useState(false);
   const [tatSearch, setTatSearch] = useState('');
 
+  // Target vs Achievement Specific State (Section I)
+  const targetFileInputRef = useRef<HTMLInputElement>(null);
+  const disbursalFileInputRef = useRef<HTMLInputElement>(null);
+  const [targetUploading, setTargetUploading] = useState(false);
+  const [targetSummary, setTargetSummary] = useState<any>(null);
+  const [targetLoans, setTargetLoans] = useState<any[]>([]);
+  const [targetLoading, setTargetLoading] = useState(false);
+  const [targetSearch, setTargetSearch] = useState('');
+
   // Scoring Modal state
   const [scoringModalOpen, setScoringModalOpen] = useState(false);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<{
@@ -281,6 +290,69 @@ const SectionAuditPage: React.FC<SectionAuditPageProps> = ({ sectionCode }) => {
     }
   };
 
+  const loadTargetData = async (branchId: string) => {
+    if (!branchId || sectionCode !== 'I') return;
+    try {
+      setTargetLoading(true);
+      const [summaryRes, loansRes] = await Promise.all([
+        adminApi.getBranchTargetSummary(branchId),
+        adminApi.getTargetLoans({ branch_id: branchId, per_page: 100 }),
+      ]);
+      setTargetSummary(summaryRes?.data || null);
+      setTargetLoans(loansRes?.data?.loans || []);
+    } catch (e) {
+      console.error('Failed to load Target data', e);
+    } finally {
+      setTargetLoading(false);
+    }
+  };
+
+  const handleTargetFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    sheetType?: 'branch_target' | 'book1_disbursal'
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setTargetUploading(true);
+      const res = await adminApi.importTargetRecords(
+        file,
+        selectedBranchId ? Number(selectedBranchId) : undefined,
+        sheetType
+      );
+      if (res?.status === 'success') {
+        const typeLabel =
+          res.data?.type === 'book1_disbursal'
+            ? 'Book1 Loan Disbursals'
+            : 'Branch Target Sheet';
+        toast({
+          title: `${typeLabel} Uploaded & Scored Successfully!`,
+          description: `Processed ${res.data?.total_processed || 0} records across ${res.data?.branches_affected_count || 0} branches. I.1 score updated.`,
+        });
+        if (selectedBranchId) {
+          await loadBranchInspection(selectedBranchId);
+          await loadTargetData(selectedBranchId);
+        }
+      } else {
+        toast({
+          title: 'Upload Failed',
+          description: res?.message || 'Failed to process sheet',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Upload Error',
+        description: err?.message || 'An error occurred during upload',
+        variant: 'destructive',
+      });
+    } finally {
+      setTargetUploading(false);
+      if (event.target) event.target.value = '';
+    }
+  };
+
   useEffect(() => {
     loadBranches();
   }, [isEmployee]);
@@ -297,6 +369,8 @@ const SectionAuditPage: React.FC<SectionAuditPageProps> = ({ sectionCode }) => {
       loadBranchInspection(selectedBranchId);
       if (sectionCode === 'H') {
         loadTatData(selectedBranchId);
+      } else if (sectionCode === 'I') {
+        loadTargetData(selectedBranchId);
       }
     }
   }, [selectedBranchId, sectionCode]);
@@ -668,6 +742,244 @@ const SectionAuditPage: React.FC<SectionAuditPageProps> = ({ sectionCode }) => {
                               <Badge variant="outline" className="text-[10px]">
                                 {r.loan_status || 'Active'}
                               </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Section I Specific: Target vs Achievement & Book1 Disbursals Analysis */}
+      {sectionCode === 'I' && (
+        <div className="space-y-4">
+          <Card className="crm-card border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-background to-blue-500/5 shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-bold text-foreground">
+                      Target Vs Achievement &amp; Book1 Disbursal Upload
+                    </h3>
+                    <Badge variant="outline" className="text-xs font-semibold bg-primary/10 text-primary border-primary/30">
+                      Auto-Calculator (I.1)
+                    </Badge>
+                  </div>
+                  <p className="text-xs md:text-sm text-muted-foreground max-w-2xl">
+                    Branch target sheet (AMJ targets) ya Book1 loan disbursal sheet upload karein. System har branch ka actual disbursement calculate karke target se match karega aur <strong>Section I.1 score (15M Carry)</strong> assign karega.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                    <span className="font-semibold text-muted-foreground">Scoring Slabs:</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-medium">
+                      &gt;90% = 15.0M (100%)
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 font-medium">
+                      60%-90% = 11.25M (75%)
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-medium">
+                      40%-60% = 7.5M (50%)
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-medium">
+                      &lt;40% = 3.0M (20%)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                  <input
+                    type="file"
+                    ref={targetFileInputRef}
+                    onChange={(e) => handleTargetFileUpload(e, 'branch_target')}
+                    accept=".csv, .xlsx, .xls"
+                    className="hidden"
+                  />
+                  <input
+                    type="file"
+                    ref={disbursalFileInputRef}
+                    onChange={(e) => handleTargetFileUpload(e, 'book1_disbursal')}
+                    accept=".csv, .xlsx, .xls"
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => targetFileInputRef.current?.click()}
+                    disabled={targetUploading}
+                    variant="outline"
+                    className="gap-2 font-semibold shadow-sm text-xs"
+                  >
+                    {targetUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    <span>Upload Target Sheet</span>
+                  </Button>
+                  <Button
+                    onClick={() => disbursalFileInputRef.current?.click()}
+                    disabled={targetUploading}
+                    className="gap-2 font-semibold shadow-sm text-xs"
+                  >
+                    {targetUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    <span>Upload Book1 Disbursals</span>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Branch Live Target vs Achievement Stats Banner */}
+          {targetSummary && (
+            <Card className="crm-card border shadow-sm">
+              <CardContent className="p-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="p-3 rounded-lg bg-muted/40 border">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Branch Target
+                    </span>
+                    <div className="text-xl font-bold text-foreground mt-1">
+                      ₹{Number(targetSummary.target_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      Quarter Target
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted/40 border">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Total Disbursed
+                    </span>
+                    <div className="text-xl font-bold text-primary mt-1">
+                      ₹{Number(targetSummary.disbursed_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      {targetSummary.total_loans || 0} loan file(s)
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted/40 border">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Achievement %
+                    </span>
+                    <div className="text-2xl font-bold text-foreground mt-1">
+                      {targetSummary.achievement_percentage}%
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] mt-0.5 font-semibold ${
+                        targetSummary.achievement_percentage >= 90
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : targetSummary.achievement_percentage >= 60
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : targetSummary.achievement_percentage >= 40
+                          ? 'bg-amber-50 text-amber-700 border-amber-300'
+                          : 'bg-rose-50 text-rose-700 border-rose-300'
+                      }`}
+                    >
+                      {targetSummary.achievement_percentage >= 90
+                        ? 'Target Achieved'
+                        : targetSummary.achievement_percentage >= 60
+                        ? 'Good Performance'
+                        : 'Below Target'}
+                    </Badge>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted/40 border">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Applicable Policy Slab
+                    </span>
+                    <div className="text-sm font-bold text-foreground mt-1 leading-tight">
+                      {targetSummary.tier}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      Slab: {targetSummary.percentage}% marks
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 col-span-2 md:col-span-1">
+                    <span className="text-xs font-semibold text-primary uppercase">
+                      Marks Obtained
+                    </span>
+                    <div className="text-2xl font-black text-primary mt-1">
+                      {Number(targetSummary.marks_obtained || 0).toFixed(2)}{' '}
+                      <span className="text-xs font-semibold text-muted-foreground">/ 15.00 M</span>
+                    </div>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      ✓ Auto-synced in Scorecard
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Book1 Loans List for this Branch */}
+          {targetLoans && targetLoans.length > 0 && (
+            <Card className="crm-card border shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <Target className="h-4 w-4 text-primary" />
+                      <span>Book1 Disbursed Loans ({targetLoans.length})</span>
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Uploaded Book1 sheet ke mutabiq is branch ke individual loan disbursals.
+                    </CardDescription>
+                  </div>
+                  <div className="w-full sm:w-64">
+                    <div className="relative">
+                      <Search className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Search loan account / customer..."
+                        value={targetSearch}
+                        onChange={(e) => setTargetSearch(e.target.value)}
+                        className="h-8 pl-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="max-h-80 overflow-y-auto rounded-md border">
+                  <Table>
+                    <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="text-xs">Loan Account No</TableHead>
+                        <TableHead className="text-xs">Customer Name</TableHead>
+                        <TableHead className="text-xs">Product</TableHead>
+                        <TableHead className="text-xs">Disbursal Date</TableHead>
+                        <TableHead className="text-xs text-right">Disbursal Amount</TableHead>
+                        <TableHead className="text-xs">Month</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {targetLoans
+                        .filter(
+                          (r) =>
+                            !targetSearch ||
+                            r.loan_account_number?.toLowerCase().includes(targetSearch.toLowerCase()) ||
+                            r.customer_name?.toLowerCase().includes(targetSearch.toLowerCase()) ||
+                            r.product_name?.toLowerCase().includes(targetSearch.toLowerCase())
+                        )
+                        .map((r) => (
+                          <TableRow key={r.id} className="text-xs hover:bg-muted/30">
+                            <TableCell className="font-mono font-medium">{r.loan_account_number}</TableCell>
+                            <TableCell className="font-medium">{r.customer_name || '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">{r.product_name || 'Loan'}</TableCell>
+                            <TableCell>{r.disbursal_date || '—'}</TableCell>
+                            <TableCell className="text-right font-bold text-foreground">
+                              ₹{Number(r.disbursal_amount || 0).toLocaleString('en-IN')}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {r.disbursal_month || '—'}
                             </TableCell>
                           </TableRow>
                         ))}

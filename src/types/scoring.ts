@@ -1,13 +1,15 @@
 // Scoring Rules (integrated with Rails backend ScoringRule model)
 // Backend fields: id, min_days, max_days, description, score, is_active, is_deleted, meta, timestamps
 
+export type RuleType = 'cash_cheque' | 'tat_disbursement' | 'target_achievement';
+
 export interface ScoringRule {
   id: number | string; // backend numeric id; temporary client rows can use a temp string id
-  rule_type?: 'cash_cheque' | 'tat_disbursement';
+  rule_type?: RuleType;
   min_days: number; // inclusive
   max_days: number; // inclusive
   description?: string | null;
-  score: number; // 0..10 for cash, 0..100% for tat
+  score: number; // 0..10 for cash, 0..100% for tat & target achievement
   is_active: boolean;
   is_deleted?: boolean; // rarely sent to client, but keep for completeness
   meta?: Record<string, any> | null;
@@ -17,7 +19,7 @@ export interface ScoringRule {
 
 // Payload for create/update (single rule)
 export interface ScoringRulePayload {
-  rule_type?: 'cash_cheque' | 'tat_disbursement';
+  rule_type?: RuleType;
   min_days: number;
   max_days: number;
   description?: string;
@@ -27,7 +29,7 @@ export interface ScoringRulePayload {
 
 // Bulk sync request body
 export interface ScoringRulesSyncPayload {
-  rule_type?: 'cash_cheque' | 'tat_disbursement';
+  rule_type?: RuleType;
   rules: Array<Partial<Pick<ScoringRule, 'id'>> & ScoringRulePayload>;
   replace?: boolean; // when true, rules not in payload are soft-deleted (inactive)
 }
@@ -82,7 +84,7 @@ export type AnyScoringResponse =
 export interface EditableScoringRule {
   temp_id?: string; // for unsaved rows
   id?: number; // present if persisted
-  ruleType?: 'cash_cheque' | 'tat_disbursement';
+  ruleType?: RuleType;
   minDays: number;
   maxDays: number;
   description: string;

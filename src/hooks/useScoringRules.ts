@@ -3,6 +3,7 @@ import { adminApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import {
   EditableScoringRule,
+  RuleType,
   ScoringRule,
   ScoringRulesSyncPayload,
   toEditableRule,
@@ -13,7 +14,7 @@ interface UseScoringRulesOptions {
   page?: number;
   perPage?: number;
   autoLoad?: boolean;
-  ruleType?: 'cash_cheque' | 'tat_disbursement';
+  ruleType?: RuleType;
 }
 
 interface UseScoringRulesReturn {
